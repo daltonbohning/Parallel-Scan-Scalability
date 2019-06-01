@@ -27,3 +27,7 @@ openmp: openmp_inclusiveScan.c
 
 openmp_release: openmp_inclusiveScan.c
 	$(GCC) -DARRAY_SIZE=$(ARRAY_SIZE) -o openmp_inclusiveScan openmp_inclusiveScan.c
+
+
+clean:
+	rm -f brent-kung openmp_inclusiveScan
