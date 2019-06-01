@@ -6,10 +6,11 @@ Dalton Bohning
 
 Usage:
     gcc -fopenmp -DARRAY_SIZE=someNumber -o openmp_inclusiveScan openmp_inclusiveScan.c
-
-
 */
 
+
+#include <stdlib.h>
+#include <stdio.h>
 
 
 void inclusive_scan(float *X, float *Y)
@@ -30,8 +31,8 @@ void inclusive_scan(float *X, float *Y)
 
 int main(void)
 {
-    float *X = (float*)malloc(ARRAY_SIZE);
-    float *Y = (float*)malloc(ARRAY_SIZE);
+    float *X = (float*) malloc(ARRAY_SIZE * sizeof(float));
+    float *Y = (float*) malloc(ARRAY_SIZE * sizeof(float));
 
     for(int i = 0; i < ARRAY_SIZE; ++i)
     {
@@ -42,9 +43,10 @@ int main(void)
 
     for(int i = 0; i < ARRAY_SIZE; ++i)
     {
-        printf("%f", Y[i]);
-        if(i % 10 == 0){
+        printf("%.0f ", Y[i]);
+        if((i+1) % 10 == 0){
             printf("\n");
         }
     }
+    printf("\n");
 }
