@@ -74,6 +74,8 @@ struct GpuTimer
       }
 };
 
+GpuTimer timer_kernelExecution;
+GpuTimer timer_kernelTotal;
 
 
 
@@ -129,33 +131,36 @@ void Brent_Kung_scan_kernel(float *X, float *Y)
 void inclusive_scan(float *host_X, float *host_Y)
 {
     float *X, *Y;
+    int mallocSize = ARRAY_SIZE * sizeof(float);
 
-    handleError(cudaMalloc((void **)&X, ARRAY_SIZE));
-    handleError(cudaMalloc((void **)&Y, ARRAY_SIZE));
+    timer_kernelTotal.Start();
 
-    handleError(cudaMemcpy(X, host_X, ARRAY_SIZE, cudaMemcpyHostToDevice));
+    handleError(cudaMalloc((void **)&X, mallocSize));
+    handleError(cudaMalloc((void **)&Y, mallocSize));
+
+    handleError(cudaMemcpy(X, host_X, mallocSize, cudaMemcpyHostToDevice));
    
     //Book says SECTION_SIZE/2 OK, but not sure about
     //other dimensions and blocks per grid
     dim3 threadsPerBlock(SECTION_SIZE/2, 1, 1);
     dim3 blocksPerGrid(100,1,1);
 
-    GpuTimer timer;
-    timer.Start();
+    timer_kernelExecution.Start();
     Brent_Kung_scan_kernel<<<blocksPerGrid, threadsPerBlock>>>(X, Y);
-    timer.Stop();
+    timer_kernelExecution.Stop();
 
-    handleError(cudaMemcpy(host_Y, Y, ARRAY_SIZE, cudaMemcpyDeviceToHost));
+    handleError(cudaMemcpy(host_Y, Y, mallocSize, cudaMemcpyDeviceToHost));
     handleError(cudaFree(X));
     handleError(cudaFree(Y));
 
+    timer_kernelTotal.Stop();
 }
 
 
 int main(void)
 {
-    float *host_X = (float*)malloc(ARRAY_SIZE);
-    float *host_Y = (float*)malloc(ARRAY_SIZE);
+    float *host_X = (float*) malloc(ARRAY_SIZE * sizeof(float));
+    float *host_Y = (float*) malloc(ARRAY_SIZE * sizeof(float));
 
     for(int i = 0; i < ARRAY_SIZE; ++i)
     {
@@ -166,9 +171,21 @@ int main(void)
 
     for(int i = 0; i < ARRAY_SIZE; ++i)
     {
-        printf("%f", host_Y[i]);
-        if(i % 10 == 0){
+        printf("%.0f ", host_Y[i]);
+        if((i+1) % 10 == 0){
             printf("\n");
         }
     }
+    printf("\n");
+
+    float kernelExec = timer_kernelExecution.Elapsed();
+    float kernelTotal = timer_kernelTotal.Elapsed();
+    float kernelMem = kernelTotal - kernelExec;
+
+    printf("Kernel Execution: %f (ms)\n", kernelExec);
+    printf("Kernel Memory:    %f (ms)\n", kernelMem);
+    printf("Kernel Total:     %f (ms)\n", kernelTotal);
+
+    free(host_X);
+    free(host_Y);
 }
