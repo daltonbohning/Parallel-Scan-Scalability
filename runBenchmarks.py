@@ -43,7 +43,7 @@ def run():
 
     for target in ["brent_release"]:
         executable = "./brent-kung" if target == "brent_release" else "./openmp_inclusiveScan"
-        for arraySize in [1024,2048,4096,8192]:
+        for arraySize in [1024,2048]:
             for sectionSize in [1024,2048]:
                 args_ = [target,"ARRAY_SIZE="+str(arraySize),"ARRAY_SIZE="+str(arraySize)]
                 print("Making " + str(target))
