@@ -182,9 +182,9 @@ int main(void)
     float kernelTotal = timer_kernelTotal.Elapsed();
     float kernelMem = kernelTotal - kernelExec;
 
-    printf("Kernel Execution: %f (ms)\n", kernelExec);
-    printf("Kernel Memory:    %f (ms)\n", kernelMem);
-    printf("Kernel Total:     %f (ms)\n", kernelTotal);
+    printf("Kernel Execution (ms): %f\n", kernelExec);
+    printf("Kernel Memory (ms):    %f\n", kernelMem);
+    printf("Kernel Total (ms):     %f\n", kernelTotal);
 
     free(host_X);
     free(host_Y);
