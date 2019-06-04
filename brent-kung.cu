@@ -78,6 +78,29 @@ GpuTimer timer_kernelExecution;
 GpuTimer timer_kernelTotal;
 
 
+//An iterative version of parallel scan addition
+__host__
+void sequential_scan(float *X, float *Y){
+  int i = 1, acc = Y[0] = X[0];
+  
+  while (i < ARRAY_SIZE)
+    Y[i++] = acc = acc + X[i];
+}
+
+//Runs the iterative version and verifies the results
+__host__
+bool verify(float *X, float *Y){
+  float *Y_ = (float*) malloc(ARRAY_SIZE * sizeof(float));
+  sequential_scan(X, Y_);
+  for (int i = 0; i < ARRAY_SIZE; ++i){
+    if (Y[i] != Y_[i]) {
+      printf("Expected %.0f but got %.0f at Y[%d]\n", Y_[i], Y[i], i);
+      return false;
+    }
+  }
+  free(Y_);
+  return true;
+}
 
 __global__ 
 void Brent_Kung_scan_kernel(float *X, float *Y)
@@ -156,6 +179,15 @@ void inclusive_scan(float *host_X, float *host_Y)
     timer_kernelTotal.Stop();
 }
 
+void printArray(float *A){
+  for(int i = 0; i < ARRAY_SIZE; ++i) {
+    printf("%.0f ", A[i]);
+    if((i+1) % 10 == 0){
+      printf("\n");
+    }
+  }
+  printf("\n");
+}
 
 int main(void)
 {
@@ -167,16 +199,17 @@ int main(void)
         host_X[i] = i + i %4; //change
     }
 
+
     inclusive_scan(host_X, host_Y);
 
-    for(int i = 0; i < ARRAY_SIZE; ++i)
-    {
-        printf("%.0f ", host_Y[i]);
-        if((i+1) % 10 == 0){
-            printf("\n");
-        }
+    //Make sure the results are correct
+    if (1) {
+      printArray(host_Y);
+      if (verify(host_X, host_Y))
+        printf("All correct!\n");
+      else
+        printf("OOF\n");
     }
-    printf("\n");
 
     float kernelExec = timer_kernelExecution.Elapsed();
     float kernelTotal = timer_kernelTotal.Elapsed();
