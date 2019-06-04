@@ -1,9 +1,5 @@
 implementation,arraySize,sectionSize,totalTime(ms)
-brent_release,1024,1024,0.625376
-brent_release,1024,2048,0.620704
-brent_release,2048,1024,0.618336
-brent_release,2048,2048,0.640896
-brent_release,4096,1024,0.619488
-brent_release,4096,2048,0.618496
-brent_release,8192,1024,0.623744
-brent_release,8192,2048,0.630432
+brent_release,1024,1024,1.068128
+brent_release,1024,2048,0.70736
+brent_release,2048,1024,0.717408
+brent_release,2048,2048,0.721952
