@@ -7,6 +7,7 @@ ARRAY_SIZE = 2000
 SECTION_SIZE = 2048
 
 
+
 #NVCC = nvcc -I. -lcuda -lcudart -lm
 NVCC = nvcc -I.
 NVCC_DEBUG = $(NVCC) -g -G
@@ -32,5 +33,10 @@ openmp_release: openmp_inclusiveScan.c
 benchmarks: runBenchmarks.py
 	./runBenchmarks.py
 
+tests: runTests.py
+	./runTests.py
+
 clean:
 	rm -f brent-kung openmp_inclusiveScan
+
+.PHONY: clean brent brent_release openmp openmp_release benchmarks tests
