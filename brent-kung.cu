@@ -20,7 +20,7 @@ Usage:
 
 #include <cuda.h>
 #include <stdio.h>
-
+#include <math.h> //for ceil()
 
 //#define SECTION_SIZE 100
 //#define ARRAY_SIZE 100
@@ -105,74 +105,120 @@ bool verify(float *X, float *Y){
   return true;
 }
 
+//phase 1 calculates the sums for each section (per block)
 __global__ 
-void Brent_Kung_scan_kernel(float *X, float *Y)
+void Brent_Kung_kernel_phase1(float *X, float *Y, float *S)
 {
     __shared__ float XY[SECTION_SIZE];
 
     int i = 2*blockIdx.x*blockDim.x + threadIdx.x;
     if(i < ARRAY_SIZE)
-    {
-        XY[threadIdx.x] = X[i];
-    }
+      XY[threadIdx.x] = X[i];
 
     if(i + blockDim.x < ARRAY_SIZE)
-    {
-        XY[threadIdx.x+blockDim.x] = X[i + blockDim.x];
-    }
+      XY[threadIdx.x+blockDim.x] = X[i + blockDim.x];
 
     for (unsigned int stride = 1; stride <= blockDim.x; stride *= 2) {
-        __syncthreads();
-        int index = (threadIdx.x+1) * 2 * stride - 1;
-        if(index < SECTION_SIZE)
-        {
-            XY[index] += XY[index - stride];
-        }
+      __syncthreads();
+      int index = (threadIdx.x+1) * 2 * stride - 1;
+      if(index < SECTION_SIZE)
+        XY[index] += XY[index - stride];
+    }
+    
+    for(int stride = SECTION_SIZE/4; stride > 0; stride /= 2)
+    {
+      __syncthreads();
+      int index = (threadIdx.x+1) * stride * 2 - 1;
+      if(index + stride < SECTION_SIZE) 
+        XY[index + stride] += XY[index];
+    }
+    
+    __syncthreads();
+    if(i < ARRAY_SIZE)
+      Y[i] = XY[threadIdx.x];
+    
+    if(i + blockDim.x < ARRAY_SIZE)
+      Y[i + blockDim.x] = XY[threadIdx.x + blockDim.x];
+
+    //Save each section's sum for use in phase2
+    if (threadIdx.x == (blockDim.x-1))
+      S[blockIdx.x] = XY[SECTION_SIZE - 1];
+
+}
+
+// phase2 calculates the scan from the results of each block
+// S is the same array from phase1
+__global__
+void Brent_Kung_kernel_phase2(float *S )
+{
+    __shared__ float XY[SECTION_SIZE];
+
+    int i = 2*blockIdx.x*blockDim.x + threadIdx.x;
+    if(i < ARRAY_SIZE)
+      XY[threadIdx.x] = S[i];
+
+    if(i + blockDim.x < ARRAY_SIZE)
+      XY[threadIdx.x+blockDim.x] = S[i + blockDim.x];
+
+    for (unsigned int stride = 1; stride <= blockDim.x; stride *= 2) {
+      __syncthreads();
+      int index = (threadIdx.x+1) * 2 * stride - 1;
+      if(index < SECTION_SIZE)
+        XY[index] += XY[index - stride];
     }
 
     for(int stride = SECTION_SIZE/4; stride > 0; stride /= 2)
     {
-        __syncthreads();
-        int index = (threadIdx.x+1) * stride * 2 - 1;
-        if(index + stride < SECTION_SIZE) 
-        {
-            XY[index + stride] += XY[index];
-        }
+      __syncthreads();
+      int index = (threadIdx.x+1) * stride * 2 - 1;
+      if(index + stride < SECTION_SIZE)
+        XY[index + stride] += XY[index];
     }
 
     __syncthreads();
     if(i < ARRAY_SIZE)
-    {
-        Y[i] = XY[threadIdx.x];
-    }
-    
-    if(i + blockDim.x < ARRAY_SIZE)
-    {
-        Y[i + blockDim.x] = XY[threadIdx.x + blockDim.x];
-    }
+      S[i] = XY[threadIdx.x];
 
+    if(i + blockDim.x < ARRAY_SIZE)
+      S[i + blockDim.x] = XY[threadIdx.x + blockDim.x];
+}
+
+//phase3 adds the phase 2 values to each block
+__global__
+void Brent_Kung_kernel_phase3(float *Y, float *S)
+{
+  int i = 2*(blockIdx.x+1)*(blockDim.x) + threadIdx.x;
+
+  if(i < ARRAY_SIZE)
+    Y[i] += S[blockIdx.x];
+
+  if(i + blockDim.x < ARRAY_SIZE)
+    Y[i + blockDim.x] += S[blockIdx.x];
 }
 
 
 void inclusive_scan(float *host_X, float *host_Y)
 {
-    float *X, *Y;
+    float *X, *Y, *S;
     int mallocSize = ARRAY_SIZE * sizeof(float);
+   
+    //Each block calculates a section of the input
+    int numBlocks_phase1 = ceil((double)ARRAY_SIZE/SECTION_SIZE);
+    int numBlocks_phase2 = ceil((double)numBlocks_phase1/SECTION_SIZE);
+    int numBlocks_phase3 = numBlocks_phase1 - 1;
 
     timer_kernelTotal.Start();
 
     handleError(cudaMalloc((void **)&X, mallocSize));
     handleError(cudaMalloc((void **)&Y, mallocSize));
+    handleError(cudaMalloc((void **)&S, numBlocks_phase1*sizeof(float)));
 
     handleError(cudaMemcpy(X, host_X, mallocSize, cudaMemcpyHostToDevice));
    
-    //Book says SECTION_SIZE/2 OK, but not sure about
-    //other dimensions and blocks per grid
-    dim3 threadsPerBlock(SECTION_SIZE/2, 1, 1);
-    dim3 blocksPerGrid(100,1,1);
-
     timer_kernelExecution.Start();
-    Brent_Kung_scan_kernel<<<blocksPerGrid, threadsPerBlock>>>(X, Y);
+    Brent_Kung_kernel_phase1<<<numBlocks_phase1, SECTION_SIZE/2>>>(X, Y, S);
+    Brent_Kung_kernel_phase2<<<numBlocks_phase2, SECTION_SIZE/2>>>(S);
+    Brent_Kung_kernel_phase3<<<numBlocks_phase3, SECTION_SIZE/2>>>(Y, S);
     timer_kernelExecution.Stop();
 
     handleError(cudaMemcpy(host_Y, Y, mallocSize, cudaMemcpyDeviceToHost));
@@ -199,20 +245,23 @@ int main(void)
 
     for(int i = 0; i < ARRAY_SIZE; ++i)
     {
-        host_X[i] = i + i %4; //change
+      host_X[i] = 1;
+        //host_X[i] = i + i %4; //change
     }
 
 
     inclusive_scan(host_X, host_Y);
 
     //Make sure the results are correct
-    if (1) {
-      printArray(host_Y);
-      if (verify(host_X, host_Y))
-        printf("ALL CORRECT!\n");
-      else
-        printf("FAIL!\n");
-    }
+#if defined(PRINT_RESULTS)
+    printArray(host_Y);
+#endif
+#if defined(VERIFY_RESULTS)
+    if (verify(host_X, host_Y))
+      printf("ALL CORRECT!\n");
+    else
+      printf("FAIL!\n");
+#endif
 
     float kernelExec = timer_kernelExecution.Elapsed();
     float kernelTotal = timer_kernelTotal.Elapsed();
