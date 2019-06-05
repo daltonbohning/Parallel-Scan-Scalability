@@ -21,6 +21,7 @@ Usage:
 #include <cuda.h>
 #include <stdio.h>
 #include <math.h> //for ceil()
+#include <limits.h>
 
 //#define SECTION_SIZE 100
 //#define ARRAY_SIZE 100
@@ -84,7 +85,8 @@ void sequential_scan(float *X, float *Y){
   int acc = X[0];
   Y[0] = acc;
 
-  for (int i = 1; i < ARRAY_SIZE; ++i) {
+  int i;
+  for (i = 1; i < ARRAY_SIZE; ++i) {
     acc += X[i];
     Y[i] = acc;
   }
@@ -107,15 +109,15 @@ bool verify(float *X, float *Y){
 
 //phase 1 calculates the sums for each section (per block)
 __global__ 
-void Brent_Kung_kernel_phase1(float *X, float *Y, float *S)
+void Brent_Kung_kernel_phase1(float *X, float *Y, float *S, int size)
 {
     __shared__ float XY[SECTION_SIZE];
 
     int i = 2*blockIdx.x*blockDim.x + threadIdx.x;
-    if(i < ARRAY_SIZE)
+    if(i < size)
       XY[threadIdx.x] = X[i];
 
-    if(i + blockDim.x < ARRAY_SIZE)
+    if(i + blockDim.x < size)
       XY[threadIdx.x+blockDim.x] = X[i + blockDim.x];
 
     for (unsigned int stride = 1; stride <= blockDim.x; stride *= 2) {
@@ -134,10 +136,10 @@ void Brent_Kung_kernel_phase1(float *X, float *Y, float *S)
     }
     
     __syncthreads();
-    if(i < ARRAY_SIZE)
+    if(i < size)
       Y[i] = XY[threadIdx.x];
     
-    if(i + blockDim.x < ARRAY_SIZE)
+    if(i + blockDim.x < size)
       Y[i + blockDim.x] = XY[threadIdx.x + blockDim.x];
 
     //Save each section's sum for use in phase2
@@ -146,19 +148,19 @@ void Brent_Kung_kernel_phase1(float *X, float *Y, float *S)
 
 }
 
-// phase2 calculates the scan from the results of each block
-// S is the same array from phase1
+// phase2 is similar to phase1, except it doesn't store each block's sum
+// This is meant for when the array fits into a single block
 __global__
-void Brent_Kung_kernel_phase2(float *S)
+void Brent_Kung_kernel_phase2(float *X, float *Y, int size)
 {
     __shared__ float XY[SECTION_SIZE];
 
     int i = 2*blockIdx.x*blockDim.x + threadIdx.x;
-    if(i < ARRAY_SIZE)
-      XY[threadIdx.x] = S[i];
+    if(i < size)
+      XY[threadIdx.x] = X[i];
 
-    if(i + blockDim.x < ARRAY_SIZE)
-      XY[threadIdx.x+blockDim.x] = S[i + blockDim.x];
+    if(i + blockDim.x < size)
+      XY[threadIdx.x+blockDim.x] = X[i + blockDim.x];
 
     for (unsigned int stride = 1; stride <= blockDim.x; stride *= 2) {
       __syncthreads();
@@ -176,30 +178,31 @@ void Brent_Kung_kernel_phase2(float *S)
     }
 
     __syncthreads();
-    if(i < ARRAY_SIZE)
-      S[i] = XY[threadIdx.x];
+    if(i < size)
+      Y[i] = XY[threadIdx.x];
 
-    if(i + blockDim.x < ARRAY_SIZE)
-      S[i + blockDim.x] = XY[threadIdx.x + blockDim.x];
+    if(i + blockDim.x < size)
+      Y[i + blockDim.x] = XY[threadIdx.x + blockDim.x];
 }
 
 //phase3 adds the phase 2 values to each block
 __global__
-void Brent_Kung_kernel_phase3(float *Y, float *S)
+void Brent_Kung_kernel_phase3(float *Y, float *S, int size)
 {
   int i = 2*(blockIdx.x+1)*(blockDim.x) + threadIdx.x;
 
-  if(i < ARRAY_SIZE)
+  //TODO Shared memory for S[]?
+  if(i < size)
     Y[i] += S[blockIdx.x];
 
-  if(i + blockDim.x < ARRAY_SIZE)
+  if(i + blockDim.x < size)
     Y[i + blockDim.x] += S[blockIdx.x];
 }
 
 
 void inclusive_scan(float *host_X, float *host_Y)
 {
-    float *X, *Y, *S;
+    float *X, *Y, *S, *SS;
     int mallocSize = ARRAY_SIZE * sizeof(float);
    
     //Each block calculates a section of the input
@@ -207,23 +210,60 @@ void inclusive_scan(float *host_X, float *host_Y)
     int numBlocks_phase2 = ceil((double)numBlocks_phase1/SECTION_SIZE);
     int numBlocks_phase3 = numBlocks_phase1 - 1;
 
+    int numBlocks_phase1s = ceil((double)numBlocks_phase1/SECTION_SIZE);
+
+
+    bool firstHierarchy = (numBlocks_phase1 > 1);
+    bool secondHierarchy = (numBlocks_phase2 > 1);
+    
+
     timer_kernelTotal.Start();
 
     handleError(cudaMalloc((void **)&X, mallocSize));
     handleError(cudaMalloc((void **)&Y, mallocSize));
-    handleError(cudaMalloc((void **)&S, numBlocks_phase1*sizeof(float)));
+    
+    if (firstHierarchy)
+      handleError(cudaMalloc((void **)&S, numBlocks_phase1*sizeof(float)));
+    if (secondHierarchy)
+      handleError(cudaMalloc((void **)&SS, numBlocks_phase1s*sizeof(float)));
+    
+
 
     handleError(cudaMemcpy(X, host_X, mallocSize, cudaMemcpyHostToDevice));
    
     timer_kernelExecution.Start();
-    Brent_Kung_kernel_phase1<<<numBlocks_phase1, SECTION_SIZE/2>>>(X, Y, S);
-    Brent_Kung_kernel_phase2<<<numBlocks_phase2, SECTION_SIZE/2>>>(S);
-    Brent_Kung_kernel_phase3<<<numBlocks_phase3, SECTION_SIZE/2>>>(Y, S);
+
+    if (!firstHierarchy) {
+      // The array fits into a single block. Just do a simple scan
+      Brent_Kung_kernel_phase2<<<numBlocks_phase1, SECTION_SIZE/2>>>(X, Y, ARRAY_SIZE);
+    }
+    else {
+      // The array doesn't fit into a single block, so we need to break it down
+      Brent_Kung_kernel_phase1<<<numBlocks_phase1, SECTION_SIZE/2>>>(X, Y, S, ARRAY_SIZE);
+      
+      if (secondHierarchy) {
+        // The partial sums for the blocks don't fit into a block, so we must further break it down
+        Brent_Kung_kernel_phase1<<<numBlocks_phase1s, SECTION_SIZE/2>>>(S, S, SS, numBlocks_phase1);
+        Brent_Kung_kernel_phase2<<<1, SECTION_SIZE/2>>>(SS, SS, numBlocks_phase1s);
+        Brent_Kung_kernel_phase3<<<numBlocks_phase1s-1, SECTION_SIZE/2>>>(S, SS, numBlocks_phase1);
+      }
+      else {
+        // The partial sums fit into a single block, so do a simple scan on the partial sums
+        Brent_Kung_kernel_phase2<<<1, SECTION_SIZE/2>>>(S, S, numBlocks_phase1);
+      }      
+
+      // Add the partial sums back to the blocks for the input array
+      Brent_Kung_kernel_phase3<<<numBlocks_phase3, SECTION_SIZE/2>>>(Y, S, ARRAY_SIZE);
+    }
     timer_kernelExecution.Stop();
 
     handleError(cudaMemcpy(host_Y, Y, mallocSize, cudaMemcpyDeviceToHost));
     handleError(cudaFree(X));
     handleError(cudaFree(Y));
+    if (firstHierarchy)
+      handleError(cudaFree(S));
+    if (secondHierarchy)
+      handleError(cudaFree(SS));
 
     timer_kernelTotal.Stop();
 }
@@ -246,8 +286,8 @@ int main(void)
     for(int i = 0; i < ARRAY_SIZE; ++i)
     {
       host_X[i] = 1;
-        //host_X[i] = i + i %4; //change
     }
+    
 
 
     inclusive_scan(host_X, host_Y);
