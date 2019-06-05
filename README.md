@@ -7,7 +7,7 @@ Currently supports array sizes up to 1048576 for a section size of 1024, or up t
 Not yet implemented.
 
 ## Scalability Study
-`make benchmarks` will produce a `.csv` with various array sizes and sections sizes of 1024,2048. This will be useful.
+`make benchmarks` will produce a `.csv` with various array sizes and sections sizes of 1024 and 2048. This will be useful.
 
 ## Research Paper review
 Not yet done.
