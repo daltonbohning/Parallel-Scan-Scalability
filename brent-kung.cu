@@ -81,10 +81,13 @@ GpuTimer timer_kernelTotal;
 //An iterative version of parallel scan addition
 __host__
 void sequential_scan(float *X, float *Y){
-  int i = 1, acc = Y[0] = X[0];
-  
-  while (i < ARRAY_SIZE) 
-    Y[i++] = acc = acc + X[i];
+  int acc = X[0];
+  Y[0] = acc;
+
+  for (int i = 1; i < ARRAY_SIZE; ++i) {
+    acc += X[i];
+    Y[i] = acc;
+  }
 }
 
 //Runs the iterative version and verifies the results
