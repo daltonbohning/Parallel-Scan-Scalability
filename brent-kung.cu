@@ -149,7 +149,7 @@ void Brent_Kung_kernel_phase1(float *X, float *Y, float *S)
 // phase2 calculates the scan from the results of each block
 // S is the same array from phase1
 __global__
-void Brent_Kung_kernel_phase2(float *S )
+void Brent_Kung_kernel_phase2(float *S)
 {
     __shared__ float XY[SECTION_SIZE];
 
