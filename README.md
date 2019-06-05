@@ -1,4 +1,4 @@
-# Parallel Scan in CUDA and OpnMP
+# Parallel Scan in CUDA and OpenMP
 ## CUDA (Brent-Kung)
 Currently supports array sizes up to 1048576 for a section size of 1024, or up to 2097152 for a section size of 2048.\
 `make tests` will run tests against various sizes and verify that the CUDA algorithm is correct.
