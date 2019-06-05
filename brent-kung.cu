@@ -83,7 +83,7 @@ __host__
 void sequential_scan(float *X, float *Y){
   int i = 1, acc = Y[0] = X[0];
   
-  while (i < ARRAY_SIZE)
+  while (i < ARRAY_SIZE) 
     Y[i++] = acc = acc + X[i];
 }
 
@@ -206,9 +206,9 @@ int main(void)
     if (1) {
       printArray(host_Y);
       if (verify(host_X, host_Y))
-        printf("All correct!\n");
+        printf("ALL CORRECT!\n");
       else
-        printf("OOF\n");
+        printf("FAIL!\n");
     }
 
     float kernelExec = timer_kernelExecution.Elapsed();
