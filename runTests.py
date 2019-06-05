@@ -38,14 +38,14 @@ def execute(*a):
 def run():
     numFailures = 0
     totalTests = 0
-    for target in ["brent_release"]:
-        executable = "./brent-kung" if target == "brent_release" else "./openmp_inclusiveScan"
-        for arraySize in [1024,2048,4096,8192,16384]:
+    for target in ["brent_test"]:
+        executable = "./brent-kung" if target == "brent_test" else "./openmp_inclusiveScan"
+        for arraySize in list(map(lambda x: 2**x, range(8,21))): #from 2^8 to 2^20, by 2's
             for sectionSize in [1024,2048]:
                 totalTests += 1
 
                 makeTarget = "make " + target + " ARRAY_SIZE="+str(arraySize) +" SECTION_SIZE="+str(sectionSize)
-                print("Running \"" + makeTarget + "\": ", end="")
+                print("Running \"" + makeTarget + "\": ", end="", flush=True)
                 execute(makeTarget)
 
                 proc = execute(executable)

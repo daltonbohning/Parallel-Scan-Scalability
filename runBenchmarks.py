@@ -43,21 +43,23 @@ def run():
 
     for target in ["brent_release"]:
         executable = "./brent-kung" if target == "brent_release" else "./openmp_inclusiveScan"
-        for arraySize in [1024,2048]:
+        for arraySize in list(map(lambda x: 2**x, range(8,21))): #from 2^8 to 2^20, by 2's
             for sectionSize in [1024,2048]:
-                args_ = [target,"ARRAY_SIZE="+str(arraySize),"ARRAY_SIZE="+str(arraySize)]
-                print("Making " + str(target))
-                execute("make", target)
-
+                makeTarget = "make " + target + " ARRAY_SIZE="+str(arraySize) +" SECTION_SIZE="+str(sectionSize)
+                print("Running \"" + makeTarget + "\": ", end="", flush=True)
+                execute(makeTarget)
+                
                 #We capture these metrics
                 totalTime = [0] * numIterationsPerTest
 
                 for iteration in range(numIterationsPerTest):
+                    print(".", end="", flush=True)
                     proc = execute(executable)
                     for l in proc.stdout.decode().split("\n"):
                         if "Kernel Total (ms):" in l:
                             totalTime[iteration] = float(l.split(":")[1].strip())
                 ###end for iteration
+                print("Done")
                 
                 outputFile.write(target + "," + str(arraySize) + "," + str(sectionSize) + "," + str(median(totalTime)) + "\n")
                 
