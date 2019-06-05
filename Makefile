@@ -16,9 +16,15 @@ GCC = gcc -fopenmp -I.
 GCC_DEBUG = $(GCC) -g
 
 
+#Default, compile with debug flags and print and verify the results
 brent: brent-kung.cu
-	$(NVCC_DEBUG) -DARRAY_SIZE=$(ARRAY_SIZE) -DSECTION_SIZE=$(SECTION_SIZE) -o brent-kung brent-kung.cu
+	$(NVCC_DEBUG) -DPRINT_RESULTS -DVERIFY_RESULTS -DARRAY_SIZE=$(ARRAY_SIZE) -DSECTION_SIZE=$(SECTION_SIZE) -o brent-kung brent-kung.cu
 
+#No debug flags, don't print, but do verify the results
+brent_test: brent-kung.cu
+	$(NVCC) -DVERIFY_RESULTS -DARRAY_SIZE=$(ARRAY_SIZE) -DSECTION_SIZE=$(SECTION_SIZE) -o brent-kung brent-kung.cu
+
+#No debug flags, don't print, don't verify. Just give times
 brent_release: brent-kung.cu
 	$(NVCC) -DARRAY_SIZE=$(ARRAY_SIZE) -DSECTION_SIZE=$(SECTION_SIZE) -o brent-kung brent-kung.cu
 
