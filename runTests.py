@@ -41,7 +41,7 @@ def run():
     totalTests = 0
     for target in ["brent_test"]:
         executable = "./brent-kung" if target == "brent_test" else "./openmp_inclusiveScan"
-        for arraySize in list(map(lambda x: 2**x, range(8,28))): #from 2^8 to 2^27, by 2's
+        for arraySize in list(map(lambda x: 2**x, range(8,29))): #from 2^8 to 2^28, by 2's
             for sectionSize in [1024,2048]:
                 totalTests += 1
 
