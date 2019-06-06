@@ -81,7 +81,7 @@ GpuTimer timer_kernelTotal;
 
 //An iterative version of parallel scan addition
 __host__
-void sequential_scan(float *X, float *Y){
+void sequential_scan(double *X, double *Y){
   int acc = X[0];
   Y[0] = acc;
 
@@ -94,8 +94,8 @@ void sequential_scan(float *X, float *Y){
 
 //Runs the iterative version and verifies the results
 __host__
-bool verify(float *X, float *Y){
-  float *Y_ = (float*) malloc(ARRAY_SIZE * sizeof(float));
+bool verify(double *X, double *Y){
+  double *Y_ = (double*) malloc(ARRAY_SIZE * sizeof(double));
   sequential_scan(X, Y_);
   for (int i = 0; i < ARRAY_SIZE; ++i){
     if (Y[i] != Y_[i]) {
@@ -107,18 +107,19 @@ bool verify(float *X, float *Y){
   return true;
 }
 
-//phase 1 calculates the sums for each section (per block)
+/* phase 1 calculates the sums for each section (per block)
+   NOTE: This is done in-place on the device, with A containing both the input and output. */
 __global__ 
-void Brent_Kung_kernel_phase1(float *X, float *Y, float *S, int size)
+void Brent_Kung_kernel_phase1(double *A, double *S, int size)
 {
-    __shared__ float XY[SECTION_SIZE];
+    __shared__ double XY[SECTION_SIZE];
 
     int i = 2*blockIdx.x*blockDim.x + threadIdx.x;
     if(i < size)
-      XY[threadIdx.x] = X[i];
+      XY[threadIdx.x] = A[i];
 
     if(i + blockDim.x < size)
-      XY[threadIdx.x+blockDim.x] = X[i + blockDim.x];
+      XY[threadIdx.x+blockDim.x] = A[i + blockDim.x];
 
     for (unsigned int stride = 1; stride <= blockDim.x; stride *= 2) {
       __syncthreads();
@@ -137,10 +138,10 @@ void Brent_Kung_kernel_phase1(float *X, float *Y, float *S, int size)
     
     __syncthreads();
     if(i < size)
-      Y[i] = XY[threadIdx.x];
+      A[i] = XY[threadIdx.x];
     
     if(i + blockDim.x < size)
-      Y[i + blockDim.x] = XY[threadIdx.x + blockDim.x];
+      A[i + blockDim.x] = XY[threadIdx.x + blockDim.x];
 
     //Save each section's sum for use in phase2
     if (threadIdx.x == (blockDim.x-1))
@@ -148,19 +149,20 @@ void Brent_Kung_kernel_phase1(float *X, float *Y, float *S, int size)
 
 }
 
-// phase2 is similar to phase1, except it doesn't store each block's sum
-// This is meant for when the array fits into a single block
+/* phase2 is similar to phase1, except it doesn't store each block's sum
+   This is meant for when the array fits into a single block
+   NOTE: This is done in-place on the device, with A containing both the input and output. */
 __global__
-void Brent_Kung_kernel_phase2(float *X, float *Y, int size)
+void Brent_Kung_kernel_phase2(double *A, int size)
 {
-    __shared__ float XY[SECTION_SIZE];
+    __shared__ double XY[SECTION_SIZE];
 
     int i = 2*blockIdx.x*blockDim.x + threadIdx.x;
     if(i < size)
-      XY[threadIdx.x] = X[i];
+      XY[threadIdx.x] = A[i];
 
     if(i + blockDim.x < size)
-      XY[threadIdx.x+blockDim.x] = X[i + blockDim.x];
+      XY[threadIdx.x+blockDim.x] = A[i + blockDim.x];
 
     for (unsigned int stride = 1; stride <= blockDim.x; stride *= 2) {
       __syncthreads();
@@ -179,87 +181,91 @@ void Brent_Kung_kernel_phase2(float *X, float *Y, int size)
 
     __syncthreads();
     if(i < size)
-      Y[i] = XY[threadIdx.x];
+      A[i] = XY[threadIdx.x];
 
     if(i + blockDim.x < size)
-      Y[i + blockDim.x] = XY[threadIdx.x + blockDim.x];
+      A[i + blockDim.x] = XY[threadIdx.x + blockDim.x];
 }
 
-//phase3 adds the phase 2 values to each block
+/* phase3 adds the phase 2 values to each block
+   NOTE: This is done in-place on the device, with A containing both the input and output. */
 __global__
-void Brent_Kung_kernel_phase3(float *Y, float *S, int size)
+void Brent_Kung_kernel_phase3(double *A, double *S, int size)
 {
   int i = 2*(blockIdx.x+1)*(blockDim.x) + threadIdx.x;
 
   //TODO Shared memory for S[]?
   if(i < size)
-    Y[i] += S[blockIdx.x];
+    A[i] += S[blockIdx.x];
 
   if(i + blockDim.x < size)
-    Y[i + blockDim.x] += S[blockIdx.x];
+    A[i + blockDim.x] += S[blockIdx.x];
 }
 
 
-void inclusive_scan(float *host_X, float *host_Y)
+/* Performs parallel scan on the device.
+   Tested on ARRAY_SIZE up to 134,217,728 for SECTION_SIZE 1024 and 2048.
+   An array of this size uses approximately 1GB of memory, but the GPU is shared
+   with the display, etc. so it's safer to not exceed it.
+   NOTE: This is done in-place on the device, but host_Y contains the output. */
+__host__
+void inclusive_scan(double *host_X, double *host_Y)
 {
-    float *X, *Y, *S, *SS;
-    int mallocSize = ARRAY_SIZE * sizeof(float);
+    double *X, *S, *SS;
+    int mallocSize = ARRAY_SIZE * sizeof(double);
    
     //Each block calculates a section of the input
     int numBlocks_phase1 = ceil((double)ARRAY_SIZE/SECTION_SIZE);
     int numBlocks_phase2 = ceil((double)numBlocks_phase1/SECTION_SIZE);
     int numBlocks_phase3 = numBlocks_phase1 - 1;
 
-    int numBlocks_phase1s = ceil((double)numBlocks_phase1/SECTION_SIZE);
-
-
-    bool firstHierarchy = (numBlocks_phase1 > 1);
-    bool secondHierarchy = (numBlocks_phase2 > 1);
+    bool firstHierarchy = (numBlocks_phase1 > 1); // Is the input array too large to be done in a single block?
+    bool secondHierarchy = (numBlocks_phase2 > 1); // Is the array of partial sums also too large?
     
 
     timer_kernelTotal.Start();
 
+    // We always need the input array on the device
     handleError(cudaMalloc((void **)&X, mallocSize));
-    handleError(cudaMalloc((void **)&Y, mallocSize));
-    
-    if (firstHierarchy)
-      handleError(cudaMalloc((void **)&S, numBlocks_phase1*sizeof(float)));
-    if (secondHierarchy)
-      handleError(cudaMalloc((void **)&SS, numBlocks_phase1s*sizeof(float)));
-    
-
-
     handleError(cudaMemcpy(X, host_X, mallocSize, cudaMemcpyHostToDevice));
-   
+    
+    // Only malloc the partial sum arrays if we need them
+    if (firstHierarchy)
+      handleError(cudaMalloc((void **)&S, numBlocks_phase1*sizeof(double)));
+    if (secondHierarchy)
+      handleError(cudaMalloc((void **)&SS, numBlocks_phase2*sizeof(double)));
+
+
     timer_kernelExecution.Start();
 
     if (!firstHierarchy) {
-      // The array fits into a single block. Just do a simple scan
-      Brent_Kung_kernel_phase2<<<numBlocks_phase1, SECTION_SIZE/2>>>(X, Y, ARRAY_SIZE);
+      // The entire array fits into a single block. Just do a simple scan
+      Brent_Kung_kernel_phase2<<<numBlocks_phase1, SECTION_SIZE/2>>>(X, ARRAY_SIZE);
     }
     else {
       // The array doesn't fit into a single block, so we need to break it down
-      Brent_Kung_kernel_phase1<<<numBlocks_phase1, SECTION_SIZE/2>>>(X, Y, S, ARRAY_SIZE);
+      Brent_Kung_kernel_phase1<<<numBlocks_phase1, SECTION_SIZE/2>>>(X, S, ARRAY_SIZE);
       
       if (secondHierarchy) {
-        // The partial sums for the blocks don't fit into a block, so we must further break it down
-        Brent_Kung_kernel_phase1<<<numBlocks_phase1s, SECTION_SIZE/2>>>(S, S, SS, numBlocks_phase1);
-        Brent_Kung_kernel_phase2<<<1, SECTION_SIZE/2>>>(SS, SS, numBlocks_phase1s);
-        Brent_Kung_kernel_phase3<<<numBlocks_phase1s-1, SECTION_SIZE/2>>>(S, SS, numBlocks_phase1);
+        // The partial sums for the blocks also don't fit into a block, so we must further break it down
+        Brent_Kung_kernel_phase1<<<numBlocks_phase2, SECTION_SIZE/2>>>(S, SS, numBlocks_phase1);
+        Brent_Kung_kernel_phase2<<<1, SECTION_SIZE/2>>>(SS, numBlocks_phase2);
+        Brent_Kung_kernel_phase3<<<numBlocks_phase2-1, SECTION_SIZE/2>>>(S, SS, numBlocks_phase1);
       }
       else {
         // The partial sums fit into a single block, so do a simple scan on the partial sums
-        Brent_Kung_kernel_phase2<<<1, SECTION_SIZE/2>>>(S, S, numBlocks_phase1);
+        Brent_Kung_kernel_phase2<<<1, SECTION_SIZE/2>>>(S, numBlocks_phase1);
       }      
 
       // Add the partial sums back to the blocks for the input array
-      Brent_Kung_kernel_phase3<<<numBlocks_phase3, SECTION_SIZE/2>>>(Y, S, ARRAY_SIZE);
+      Brent_Kung_kernel_phase3<<<numBlocks_phase3, SECTION_SIZE/2>>>(X, S, ARRAY_SIZE);
     }
     timer_kernelExecution.Stop();
 
-    handleError(cudaMemcpy(host_Y, Y, mallocSize, cudaMemcpyDeviceToHost));
+
+    // Yes, X on the device is copied to Y on host, since the operation is in-place on the device.
+    handleError(cudaMemcpy(host_Y, X, mallocSize, cudaMemcpyDeviceToHost));
     handleError(cudaFree(X));
-    handleError(cudaFree(Y));
     if (firstHierarchy)
       handleError(cudaFree(S));
     if (secondHierarchy)
@@ -268,7 +274,7 @@ void inclusive_scan(float *host_X, float *host_Y)
     timer_kernelTotal.Stop();
 }
 
-void printArray(float *A){
+void printArray(double *A){
   for(int i = 0; i < ARRAY_SIZE; ++i) {
     printf("%.0f ", A[i]);
     if((i+1) % 10 == 0){
@@ -280,16 +286,14 @@ void printArray(float *A){
 
 int main(void)
 {
-    float *host_X = (float*) malloc(ARRAY_SIZE * sizeof(float));
-    float *host_Y = (float*) malloc(ARRAY_SIZE * sizeof(float));
+    double *host_X = (double*) malloc(ARRAY_SIZE * sizeof(double));
+    double *host_Y = (double*) malloc(ARRAY_SIZE * sizeof(double));
 
     for(int i = 0; i < ARRAY_SIZE; ++i)
     {
       host_X[i] = 1;
     }
     
-
-
     inclusive_scan(host_X, host_Y);
 
     //Make sure the results are correct

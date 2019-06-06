@@ -36,11 +36,12 @@ def execute(*a):
 
 
 def run():
+    numCorrect = 0
     numFailures = 0
     totalTests = 0
     for target in ["brent_test"]:
         executable = "./brent-kung" if target == "brent_test" else "./openmp_inclusiveScan"
-        for arraySize in list(map(lambda x: 2**x, range(8,25))): #from 2^8 to 2^24, by 2's
+        for arraySize in list(map(lambda x: 2**x, range(8,28))): #from 2^8 to 2^27, by 2's
             for sectionSize in [1024,2048]:
                 totalTests += 1
 
@@ -51,6 +52,7 @@ def run():
                 proc = execute(executable)
                 for l in proc.stdout.decode().split("\n"):
                     if "ALL CORRECT!" in l:
+                        numCorrect += 1
                         print("OK!")
                     elif "FAIL!" in l:
                         numFailures += 1
@@ -59,11 +61,16 @@ def run():
             ###end for sectionSize
         ###end for arraySize
     ###end for target
-    
-    if numFailures == 0:
+
+    if numCorrect > 0:
         print("Passed " + str(totalTests) + "/" + str(totalTests))
-    else:
+    if numFailures > 0:
         print("Failed " + str(numFailures) + "/" + str(totalTests))
+    
+    numUnknown = totalTests - (numFailures + numCorrect)
+    if numUnknown > 0:
+        print("ERROR " + str(numUnknown) + "/" + str(totalTests))
+
 ###end run()
 
 

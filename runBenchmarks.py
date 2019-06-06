@@ -39,29 +39,38 @@ def execute(*a):
 
 def run():
     outputFile = open(join(rootDir, "benchmarks.csv"), "w+")
-    outputFile.write("implementation,arraySize,sectionSize,totalTime(ms)\n")
+    outputFile.write("implementation,arraySize,sectionSize,executionTime(ms),memoryTime(ms),totalTime(ms)\n")
 
     for target in ["brent_release"]:
         executable = "./brent-kung" if target == "brent_release" else "./openmp_inclusiveScan"
-        for arraySize in list(map(lambda x: 2**x, range(8,25))): #from 2^8 to 2^24, by 2's
+        for arraySize in list(map(lambda x: 2**x, range(8,28))): #from 2^8 to 2^27, by 2's
             for sectionSize in [1024,2048]:
                 makeTarget = "make " + target + " ARRAY_SIZE="+str(arraySize) +" SECTION_SIZE="+str(sectionSize)
                 print("Running \"" + makeTarget + "\": ", end="", flush=True)
                 execute(makeTarget)
                 
                 #We capture these metrics
+                execTime = [0] * numIterationsPerTest
+                memTime = [0] * numIterationsPerTest
                 totalTime = [0] * numIterationsPerTest
 
                 for iteration in range(numIterationsPerTest):
                     print(".", end="", flush=True)
                     proc = execute(executable)
                     for l in proc.stdout.decode().split("\n"):
+                        if "Kernel Execution (ms):" in l:
+                            execTime[iteration] = float(l.split(":")[1].strip())
+                        if "Kernel Memory (ms):" in l:
+                            memTime[iteration] = float(l.split(":")[1].strip())
                         if "Kernel Total (ms):" in l:
                             totalTime[iteration] = float(l.split(":")[1].strip())
                 ###end for iteration
                 print("Done")
                 
-                outputFile.write(target + "," + str(arraySize) + "," + str(sectionSize) + "," + str(median(totalTime)) + "\n")
+                outputFile.write(target + "," + str(arraySize) + "," + str(sectionSize) + "," + 
+                                 str(median(execTime)) + "," +
+                                 str(median(memTime)) + "," +
+                                 str(median(totalTime)) +"\n")
                 
             ###end for sectionSize
         ###end for arraySize
