@@ -3,8 +3,9 @@
 # Jordan Kremer
 # Dalton Bohning
 
-ARRAY_SIZE = 2000
+ARRAY_SIZE = 2048
 SECTION_SIZE = 2048
+NUM_THREADS = 8
 
 
 #NVCC = nvcc -I. -lcuda -lcudart -lm
@@ -30,15 +31,15 @@ brent_release: brent-kung.cu
 
 #Default, compile with debug flags and print and verify the results
 openmp: openmp_inclusiveScan.c
-	$(GCC_DEBUG) -DPRINT_RESULTS -DVERIFY_RESULTS -DARRAY_SIZE=$(ARRAY_SIZE) -o openmp_inclusiveScan openmp_inclusiveScan.c
+	$(GCC_DEBUG) -DPRINT_RESULTS -DVERIFY_RESULTS -DARRAY_SIZE=$(ARRAY_SIZE) -DNUM_THREADS=$(NUM_THREADS) -o openmp_inclusiveScan openmp_inclusiveScan.c
 
 #No debug flags, don't print, but do verify the results
 openmp_test: openmp_inclusiveScan.c
-	$(GCC) -DVERIFY_RESULTS -DARRAY_SIZE=$(ARRAY_SIZE) -o openmp_inclusiveScan openmp_inclusiveScan.c
+	$(GCC) -DVERIFY_RESULTS -DARRAY_SIZE=$(ARRAY_SIZE) -DNUM_THREADS=$(NUM_THREADS) -o openmp_inclusiveScan openmp_inclusiveScan.c
 
 #No debug flags, don't print, don't verify. Just give times
 openmp_release: openmp_inclusiveScan.c
-	$(GCC) -DARRAY_SIZE=$(ARRAY_SIZE) -o openmp_inclusiveScan openmp_inclusiveScan.c
+	$(GCC) -DARRAY_SIZE=$(ARRAY_SIZE) -DNUM_THREADS=$(NUM_THREADS) -o openmp_inclusiveScan openmp_inclusiveScan.c
 
 
 iterative: iterative.c
