@@ -13,6 +13,7 @@
 #include <stdbool.h>
 
 
+//Inclusive, iterative version of prefix sum in C
 void parallelScan_iterative(float *X, float *Y, int size) {
   float acc = X[0];
   Y[0] = acc;
@@ -24,6 +25,7 @@ void parallelScan_iterative(float *X, float *Y, int size) {
 }
 
 
+//Runs the iterative version and verifies the results
 bool verify(float *X, float *Y, int size){
   float *Y_ = (float*) malloc(size * sizeof(float));
   parallelScan_iterative(X, Y_, size);
@@ -39,6 +41,7 @@ bool verify(float *X, float *Y, int size){
 }
 
 
+//Print 10 elements per line
 void printArray(float *A, int size){
   for(int i = 0; i < size; ++i) {
     printf("%.0f ", A[i]);
