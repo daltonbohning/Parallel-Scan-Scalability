@@ -15,6 +15,23 @@ import subprocess
 rootDir = dirname(os.path.realpath(__file__))
 
 
+#By default, run all tests. Individual versions can be specified
+targetsToRun = ["iterative", "brent_test", "openmp_test"]
+if len(sys.argv) > 1:
+    #Allow some shorthands, or the full names as above
+    target = {
+        "c": "iterative",
+        "cuda": "brent_test",
+        "brent": "brent_test",
+        "omp": "openmp_test",
+        "openmp": "openmp_test"
+    }.get(sys.argv[1], sys.argv[1])
+    if target not in targetsToRun:
+        print("Invalid target: " + target)
+        exit()
+    targetsToRun = [target]
+
+
 # Execute from the rootDir, piping output
 def execute(*a):
     if len(a) == 1 and isinstance(a[0], str):
@@ -39,8 +56,16 @@ def run():
     numCorrect = 0
     numFailures = 0
     totalTests = 0
-    for target in ["brent_test"]:
-        executable = "./brent-kung" if target == "brent_test" else "./openmp_inclusiveScan"
+
+    print("Running " +  str(targetsToRun))
+
+    for target in targetsToRun:
+        executable = {
+            "brent_test": "./brent-kung",
+            "openmp_test": "./openmp_inclusiveScan",
+            "iterative": "./iterative"
+        }.get(target)
+
         for arraySize in list(map(lambda x: 2**x, range(8,29))): #from 2^8 to 2^28, by 2's
             for sectionSize in [1024,2048]:
                 totalTests += 1
