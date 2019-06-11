@@ -67,16 +67,18 @@ omp_set_num_threads(NUM_THREADS);
 int main(void)
 {
     float *x = (float*) malloc(ARRAY_SIZE * sizeof(float));
+    float *x_ = (float*) malloc(ARRAY_SIZE * sizeof(float));
     float *z = (float*) malloc(ARRAY_SIZE * sizeof(float));
 
     for(int i = 0; i < ARRAY_SIZE; ++i)
     {
         x[i] = i; //change
+        x_[i] = x[i];
         z[i] = i;
     }
 
     inclusive_scan(x, z);
-    if(verify(x, z, ARRAY_SIZE))
+    if(verify(x_, x, ARRAY_SIZE))
         printf("\n SUCCESS");
     else
     {
@@ -92,4 +94,8 @@ int main(void)
         }
     }
     printf("\n");
+
+    free(x);
+    free(x_);
+    free(z);
 }
