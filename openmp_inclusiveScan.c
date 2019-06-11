@@ -5,14 +5,14 @@ Jordan Kremer
 Dalton Bohning
 
 Usage:
-    gcc -fopenmp -DARRAY_SIZE=someNumber -DNUM_THREADS=someNumber -o openmp_inclusiveScan openmp_inclusiveScan.c
+    gcc -fopenmp -DARRAY_SIZE=1000 -DNUM_THREADS=8 -o openmp_inclusiveScan openmp_inclusiveScan.c
 */
 
 
 #include <stdlib.h>
 #include <stdio.h>
 #include "omp.h"
-
+#include "common.h"
 
 
 //See:  https://www.cs.fsu.edu/~engelen/courses/HPC/Synchronous.pdf
@@ -23,30 +23,41 @@ int nthreads, tid, work, lo, hi, i, j, n;
 
 n = ARRAY_SIZE;
 omp_set_num_threads(NUM_THREADS);
+
 #pragma omp parallel shared(n, nthreads, x, z) private(i, j, tid, work, lo, hi)
 {
+    printf("\n Num threads: %i \n", omp_get_num_threads());
     #pragma omp single
-    nthreads = omp_get_num_threads(); //assumes nthreads = 2^k
+    	nthreads = omp_get_num_threads(); //assumes nthreads = 2^k
     tid = omp_get_thread_num();
     work = (n + nthreads-1) / nthreads;
     lo = work * tid;
     hi = lo + work;
     if (hi > n)
-    hi = n;
+    {
+    	hi = n;
+    }
 
-    for (i = lo+1; i < hi; i++)
+    printf("\n THREAD: %i   LOW: %i  HI: %i", tid, lo, hi);
+
+    for(i = lo+1; i < hi; i++)
+    {
         x[i] = x[i] + x[i-1];
+    }
     z[tid] = x[hi-1];
     #pragma omp barrier
- 
     for (j = 1; j < nthreads; j = 2*j)
     {
         if (tid >= j)
-        z[tid] = z[tid] + z[tid - j];
+	    {
+        	z[tid] = z[tid] + z[tid - j];
+	    }
         #pragma omp barrier
     }
     for (i = lo; i < hi; i++)
+    { 
         x[i] = x[i] + z[tid] - x[hi-1];
+    }
 }
 
 }
@@ -61,10 +72,17 @@ int main(void)
     for(int i = 0; i < ARRAY_SIZE; ++i)
     {
         x[i] = i; //change
-        z[i] = i;
+        z[i] = 0;
     }
 
     inclusive_scan(x, z);
+    if(verify(x, z, ARRAY_SIZE))
+        printf("\n SUCCESS");
+    else
+    {
+        printf("\nFAILURE");
+    }
+    
 
     for(int i = 0; i < ARRAY_SIZE; ++i)
     {
