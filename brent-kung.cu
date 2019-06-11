@@ -168,8 +168,7 @@ __global__
 void Brent_Kung_kernel_phase3(float *A, float *S, int size)
 {
   int i = 2*(blockIdx.x+1)*(blockDim.x) + threadIdx.x;
-
-  //TODO Shared memory for S[]?
+  
   if(i < size)
     A[i] += S[blockIdx.x];
 
