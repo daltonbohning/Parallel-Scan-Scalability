@@ -90,6 +90,8 @@ def run():
                             memTime[iteration] = float(l.split(":")[1].strip())
                         if "Kernel Total (ms):" in l:
                             totalTime[iteration] = float(l.split(":")[1].strip())
+                        if "Execution (ms):" in l:
+                            totalTime[iteration] = float(l.split(":")[1].strip())
                 ###end for iteration
                 print("Done")
                 

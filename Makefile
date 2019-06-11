@@ -41,6 +41,10 @@ openmp_release: openmp_inclusiveScan.c
 	$(GCC) -DARRAY_SIZE=$(ARRAY_SIZE) -o openmp_inclusiveScan openmp_inclusiveScan.c
 
 
+iterative: iterative.c
+	$(GCC) -DARRAY_SIZE=$(ARRAY_SIZE) -o iterative iterative.c
+
+
 benchmarks: runBenchmarks.py
 	./runBenchmarks.py $(VERSION)
 
@@ -50,4 +54,4 @@ tests: runTests.py
 clean:
 	rm -f brent-kung openmp_inclusiveScan
 
-.PHONY: clean brent brent_release openmp openmp_release benchmarks tests
+.PHONY: clean brent brent_test brent_release openmp openmp_test openmp_release iterative benchmarks tests

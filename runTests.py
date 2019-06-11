@@ -16,11 +16,10 @@ rootDir = dirname(os.path.realpath(__file__))
 
 
 #By default, run all tests. Individual versions can be specified
-targetsToRun = ["iterative", "brent_test", "openmp_test"]
+targetsToRun = ["brent_test", "openmp_test"]
 if len(sys.argv) > 1:
     #Allow some shorthands, or the full names as above
     target = {
-        "c": "iterative",
         "cuda": "brent_test",
         "brent": "brent_test",
         "omp": "openmp_test",
@@ -62,8 +61,7 @@ def run():
     for target in targetsToRun:
         executable = {
             "brent_test": "./brent-kung",
-            "openmp_test": "./openmp_inclusiveScan",
-            "iterative": "./iterative"
+            "openmp_test": "./openmp_inclusiveScan"
         }.get(target)
 
         for arraySize in list(map(lambda x: 2**x, range(8,29))): #from 2^8 to 2^28, by 2's

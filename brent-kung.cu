@@ -249,15 +249,6 @@ void inclusive_scan(float *host_X, float *host_Y)
     timer_kernelTotal.Stop();
 }
 
-void printArray(float *A){
-  for(int i = 0; i < ARRAY_SIZE; ++i) {
-    printf("%.0f ", A[i]);
-    if((i+1) % 10 == 0){
-      printf("\n");
-    }
-  }
-  printf("\n");
-}
 
 int main(void)
 {
