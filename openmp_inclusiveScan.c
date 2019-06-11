@@ -19,12 +19,12 @@ Usage:
 void inclusive_scan(float *x, float *z)
 {
 
-int nthreads, tid, work, lo, hi, i, j, n;
+int nthreads, tid, work, lo, hi, i, j, n, temp;
 
 n = ARRAY_SIZE;
 omp_set_num_threads(NUM_THREADS);
 
-#pragma omp parallel shared(n, nthreads, x, z) private(i, j, tid, work, lo, hi)
+#pragma omp parallel shared(n, nthreads, x, z) private(i, j, tid, work, lo, hi, temp)
 {
     printf("\n Num threads: %i \n", omp_get_num_threads());
     #pragma omp single
@@ -48,11 +48,13 @@ omp_set_num_threads(NUM_THREADS);
     #pragma omp barrier
     for (j = 1; j <nthreads; j = 2*j)
     {
-        if (tid >= j)
+      temp = z[tid-j];
+      #pragma omp barrier
+      if (tid >= j)
 	    {
-        	z[tid] = z[tid] + z[tid - j];
+        z[tid] = z[tid] + temp;
 	    }
-        #pragma omp barrier
+      #pragma omp barrier
     }
     for (i = lo; i < hi; i++)
     { 
