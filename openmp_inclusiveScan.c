@@ -38,7 +38,7 @@ omp_set_num_threads(NUM_THREADS);
     	hi = n;
     }
 
-    printf("\n THREAD: %i   LOW: %i  HI: %i", tid, lo, hi);
+    printf("\n THREAD: %i   WORK: %i  LOW: %i  HI: %i", tid, work, lo, hi);
 
     for(i = lo+1; i < hi; i++)
     {
@@ -46,7 +46,7 @@ omp_set_num_threads(NUM_THREADS);
     }
     z[tid] = x[hi-1];
     #pragma omp barrier
-    for (j = 1; j < nthreads; j = 2*j)
+    for (j = 1; j <nthreads; j = 2*j)
     {
         if (tid >= j)
 	    {
@@ -72,7 +72,7 @@ int main(void)
     for(int i = 0; i < ARRAY_SIZE; ++i)
     {
         x[i] = i; //change
-        z[i] = 0;
+        z[i] = i;
     }
 
     inclusive_scan(x, z);
@@ -80,7 +80,7 @@ int main(void)
         printf("\n SUCCESS");
     else
     {
-        printf("\nFAILURE");
+        printf("\nFAILURE\n");
     }
     
 
