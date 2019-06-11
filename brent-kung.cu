@@ -22,6 +22,9 @@ Usage:
 #include <math.h> //for ceil()
 #include <limits.h>
 
+#include "common.h"
+
+
 //#define SECTION_SIZE 100
 //#define ARRAY_SIZE 100
 
@@ -78,33 +81,6 @@ GpuTimer timer_kernelExecution;
 GpuTimer timer_kernelTotal;
 
 
-//An iterative version of parallel scan addition
-__host__
-void sequential_scan(float *X, float *Y){
-  int acc = X[0];
-  Y[0] = acc;
-
-  int i;
-  for (i = 1; i < ARRAY_SIZE; ++i) {
-    acc += X[i];
-    Y[i] = acc;
-  }
-}
-
-//Runs the iterative version and verifies the results
-__host__
-bool verify(float *X, float *Y){
-  float *Y_ = (float*) malloc(ARRAY_SIZE * sizeof(float));
-  sequential_scan(X, Y_);
-  for (int i = 0; i < ARRAY_SIZE; ++i){
-    if (Y[i] != Y_[i]) {
-      printf("Expected %.0f but got %.0f at Y[%d]\n", Y_[i], Y[i], i);
-      return false;
-    }
-  }
-  free(Y_);
-  return true;
-}
 
 /* phase 1 calculates the sums for each section (per block)
    NOTE: This is done in-place on the device, with A containing both the input and output. */
@@ -288,20 +264,16 @@ int main(void)
     float *host_X = (float*) malloc(ARRAY_SIZE * sizeof(float));
     float *host_Y = (float*) malloc(ARRAY_SIZE * sizeof(float));
 
-    //Initialize with integers so we can maintain precision
-    for(int i = 0; i < ARRAY_SIZE; ++i)
-    {
-      host_X[i] = (i % 100 == 0) ? 1 : 0;
-    }
+    initArray(host_X, ARRAY_SIZE);
     
     inclusive_scan(host_X, host_Y);
 
     //Make sure the results are correct
 #if defined(PRINT_RESULTS)
-    printArray(host_Y);
+    printArray(host_Y, ARRAY_SIZE);
 #endif
 #if defined(VERIFY_RESULTS)
-    if (verify(host_X, host_Y))
+    if (verify(host_X, host_Y, ARRAY_SIZE))
       printf("ALL CORRECT!\n");
     else
       printf("FAIL!\n");
@@ -318,3 +290,4 @@ int main(void)
     free(host_X);
     free(host_Y);
 }
+
