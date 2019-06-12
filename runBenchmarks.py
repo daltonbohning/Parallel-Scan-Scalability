@@ -69,9 +69,14 @@ def run():
             "iterative": "./iterative"
         }.get(target)
 
+        sectionSizes = {
+            "brent_release": [1024,2048],
+            "openmp_release": [2,4,8,16]
+        }.get(target)
+
         for arraySize in list(map(lambda x: 2**x, range(8,29))): #from 2^8 to 2^28, by 2's
-            for sectionSize in [1024,2048]:
-                makeTarget = "make " + target + " ARRAY_SIZE="+str(arraySize) +" SECTION_SIZE="+str(sectionSize)
+            for sectionSize in sectionSizes:
+                makeTarget = "make " + target + " ARRAY_SIZE="+str(arraySize) +" SECTION_SIZE="+str(sectionSize) + " NUM_THREADS="+str(sectionSize)
                 print("Running \"" + makeTarget + "\": ", end="", flush=True)
                 execute(makeTarget)
                 

@@ -59,10 +59,9 @@ omp_set_num_threads(NUM_THREADS);
 	    }
       #pragma omp barrier
     }
+
     for (i = lo; i < hi; i++)
-    { 
-        x[i] = x[i] + z[tid] - x[hi-1];
-    }
+      x[i] = x[i] + z[tid] - x[hi-1];
 }
 
 }
@@ -75,11 +74,16 @@ int main(void)
     float *x_ = (float*) malloc(ARRAY_SIZE * sizeof(float));
     float *z = (float*) malloc(NUM_THREADS * sizeof(float));
 
+
+    initArray(x, ARRAY_SIZE);
+    initArray(x_, ARRAY_SIZE);
+    /*
     for(int i = 0; i < ARRAY_SIZE; ++i)
     {
         x[i] = i; //change
         x_[i] = x[i];
     }
+    */
 
     struct timespec start, end;
     clock_gettime(CLOCK_MONOTONIC_RAW, &start);
