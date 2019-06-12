@@ -9,7 +9,7 @@
 - Modeled after https://www.cs.fsu.edu/~engelen/courses/HPC/Synchronous.pdf
 
 ## Testing
-- `make tests` runs various tests on the CUDA and OMP versions and compares it to the iterative version.
+`make tests` runs various tests on the CUDA and OMP versions and compares it to the iterative version.
 
 ## Scalability Study
 `make benchmarks` will produce a `.csv` with various array sizes, sections sizes of 1024 and 2048, and threads of 2, 4, 8, 16, and 32 for the CUDA, OMP, and iterative version.
