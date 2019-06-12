@@ -35,7 +35,7 @@ openmp: openmp_inclusiveScan.c
 
 #No debug flags, don't print, but do verify the results
 openmp_test: openmp_inclusiveScan.c
-	$(GCC) -DVERIFY_RESULTS -DARRAY_SIZE=$(ARRAY_SIZE) -DNUM_THREADS=$(NUM_THREADS) -o openmp_inclusiveScan openmp_inclusiveScan.c
+	$(GCC_DEBUG) -DVERIFY_RESULTS -DARRAY_SIZE=$(ARRAY_SIZE) -DNUM_THREADS=$(NUM_THREADS) -o openmp_inclusiveScan openmp_inclusiveScan.c
 
 #No debug flags, don't print, don't verify. Just give times
 openmp_release: openmp_inclusiveScan.c

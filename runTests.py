@@ -64,11 +64,18 @@ def run():
             "openmp_test": "./openmp_inclusiveScan"
         }.get(target)
 
+        
+        sectionSizes = {
+            "brent_test": [1024,2048],
+            "openmp_test": [2,4,8,16]
+        }.get(target)
+
+
         for arraySize in list(map(lambda x: 2**x, range(8,29))): #from 2^8 to 2^28, by 2's
-            for sectionSize in [1024,2048]:
+            for sectionSize in sectionSizes:
                 totalTests += 1
 
-                makeTarget = "make " + target + " ARRAY_SIZE="+str(arraySize) +" SECTION_SIZE="+str(sectionSize)
+                makeTarget = "make " + target + " ARRAY_SIZE="+str(arraySize) +" SECTION_SIZE="+str(sectionSize) + " NUM_THREADS="+str(sectionSize)
                 print("Running \"" + makeTarget + "\": ", end="", flush=True)
                 execute(makeTarget)
 
