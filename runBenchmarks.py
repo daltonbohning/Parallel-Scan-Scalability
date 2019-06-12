@@ -71,7 +71,8 @@ def run():
 
         sectionSizes = {
             "brent_release": [1024,2048],
-            "openmp_release": [2,4,8,16]
+            "openmp_release": [2,4,8,16,32],
+            "iterative": [1]
         }.get(target)
 
         for arraySize in list(map(lambda x: 2**x, range(8,29))): #from 2^8 to 2^28, by 2's
