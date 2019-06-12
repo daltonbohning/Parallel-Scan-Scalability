@@ -15,9 +15,6 @@ Not yet implemented.
 Not yet done.
 
 ## TODO
-- Hook testing into OpenMP
-- Implement in OpenMP
-- Include benchmarks for OpenMP
 - Compile results for study
 - Read a paper
 - Write the report
