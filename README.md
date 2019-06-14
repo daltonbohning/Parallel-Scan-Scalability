@@ -13,10 +13,3 @@
 
 ## Scalability Study
 `make benchmarks` will produce a `.csv` with various array sizes, sections sizes of 1024 and 2048, and threads of 2, 4, 8, 16, and 32 for the CUDA, OMP, and iterative version.
-
-## Research Paper review
-Not yet done.
-
-## TODO
-- Read a paper
-- Write the report
