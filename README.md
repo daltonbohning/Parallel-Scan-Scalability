@@ -1,11 +1,11 @@
 # Parallel Scan in CUDA and OpenMP
 ## CUDA (Brent-Kung)
-- Tested and works on the particle lab machines on array sizes up to 268,435,456 (2^28) for section sizes 1024 and 2048.
+- Tested and works on wino.cs.pdx.edu on array sizes up to 268,435,456 (2^28) for section sizes 1024 and 2048.
   - The GPUs have ~2GB of memory, and an array of 2^28 `float` uses ~1GB. It's safer to not approach 2GB since the GPU is shared with the display device, etc.
 - The algorithm is done in-place on the device to conserve memory, and the output is copied to the output array, so a user would be oblivious to this.
   
 ## OpenMP
-- Tested and works on the particle lab machines and babbage on array sizes up to 268,435,456 (2^28) for 2, 4, 8,16, and 32 threads.
+- Tested and works on wino.cs.pdx.edu and babbage.cs.pdx.edu on array sizes up to 268,435,456 (2^28) for 2, 4, 8,16, and 32 threads.
 - Modeled after https://www.cs.fsu.edu/~engelen/courses/HPC/Synchronous.pdf
 
 ## Testing
