@@ -6,7 +6,7 @@ A scalability study of parallel scan using CUDA and OpenMP.
 [Jordan Kremer](https://github.com/JordanKremer)
 
 ## Report
-Included in this repo as Report.pdf. [Quicklink](https://github.com/daltonbohning/Parallel-Scan-Scalability/blob/master/Report.pdf)
+[Quicklink to Report.pdf](https://github.com/daltonbohning/Parallel-Scan-Scalability/blob/master/Report.pdf)
 
 ## How to Run
 > The OpenMP version requires OpenMP to be installed and for "openmp" to be on the GCC path.
