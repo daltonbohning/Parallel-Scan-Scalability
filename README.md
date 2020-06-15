@@ -1,8 +1,13 @@
 # Parallel Scan in CUDA and OpenMP
 A scalability study of parallel scan using CUDA and OpenMP.
+
 ## Authors
 [Dalton Bohning](https://github.com/daltonbohning)  
 [Jordan Kremer](https://github.com/JordanKremer)
+
+## Report
+Included in this repo as Report.pdf. [Quicklink](https://github.com/daltonbohning/Parallel-Scan-Scalability/blob/master/Report.pdf)
+
 ## How to Run
 > The OpenMP version requires OpenMP to be installed and for "openmp" to be on the GCC path.
 > The Brent-Kung version requires an NVIDIA CUDA-capable GPU with at least 2GB memory.
@@ -15,6 +20,7 @@ A scalability study of parallel scan using CUDA and OpenMP.
 - `make benchmarks VERSION=brent_release`
   - Runs benchmarks for the Brent-Kung version
 > The output can be found in a local file `benchmarks.csv`
+
 ## CUDA (Brent-Kung)
 - Tested and works on wino.cs.pdx.edu on array sizes up to 268,435,456 (2^28) for section sizes 1024 and 2048.
   - The GPUs have ~2GB of memory, and an array of 2^28 `float` uses ~1GB. It's safer to not approach 2GB since the GPU is shared with the display device, etc.
